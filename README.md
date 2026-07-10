@@ -2,37 +2,39 @@
 
 A Streamlit web app that predicts whether a restaurant falls into the **High** or **Low** revenue class, based on features like location, cuisine, ratings, marketing budget, and reservations.
 
-Built on top of the analysis in [`Restaurant_Revenue_prediction.ipynb`](./Restaurant_Revenue_prediction.ipynb), this app reproduces the notebook's full pipeline — preprocessing, encoding, scaling, and training five classification models — directly in the browser.
-Demo: https://restaurantrevenueprediction-vna6tgyszpmalvxrpsklvn.streamlit.app/#result
+Built on top of the analysis in [`Restaurant_Revenue_prediction.ipynb`](./Restaurant_Revenue_prediction.ipynb), this app loads the trained model artifacts the notebook exports and serves live predictions.
+
 ## ✨ Features
 
-- **📂 Upload your dataset** — bring your own `restaurant_classification.csv`
-- **🔮 Live predictions** — fill in a restaurant's details and get an instant High/Low revenue prediction with class probabilities
-- **🤖 Multi-model training** — trains Logistic Regression, Decision Tree, Random Forest, KNN, and SVM, then auto-selects the best performer by accuracy
-- **📊 Model comparison** — accuracy, precision, recall, and F1 score for every model, plus confusion matrices
-- **🌲 Feature importance** — see which features drive revenue class the most (via Random Forest)
-- **🗂️ Data overview** — quick look at the raw data, revenue distribution, and class balance
+- **🔮 Single prediction** — fill in one restaurant's details and get an instant High/Low revenue prediction with class probabilities
+- **📄 Batch prediction** — upload a CSV of many restaurants and download predictions for all of them
+- **🌲 Feature importance** — see which features drive revenue class the most (from the trained model)
+- **⚡ Fast startup** — loads pre-trained artifacts instead of retraining on every run
 
-## 🧠 Pipeline
+## 🧠 How it works
 
-The app mirrors the notebook's original workflow:
+The notebook's final cells train a Decision Tree classifier and export three artifacts:
 
-1. Load `restaurant_classification.csv`
-2. Drop the `Name` column; label-encode categorical features (`Location`, `Cuisine`, `Parking Availability`)
-3. Split features (`X`) from the target (`y = Revenue_Class`)
-4. Train/test split (80/20, stratified)
-5. Scale features with `StandardScaler` (used for Logistic Regression, KNN, and SVM)
-6. Train all five models and evaluate on the held-out test set
-7. Use the best-performing model for predictions in the UI
+| File | What it is |
+|---|---|
+| `restaurant_model.pkl` | Trained Decision Tree classifier |
+| `scaler.pkl` | `StandardScaler` fit on the training features |
+| `encoders.pkl` | `dict` of `{column_name: LabelEncoder}` for the categorical columns |
 
-> **Note:** The original notebook only saved its `LabelEncoder`s (`encoders.pkl`) and loaded data from Google Drive — it never exported a trained model file. This app trains fresh, in-session, from whatever CSV you upload, so it always reflects the current best model rather than a stale saved one.
+The app loads all three, then for each prediction:
+
+1. Encodes categorical inputs (`Location`, `Cuisine`, `Parking Availability`) with the saved `LabelEncoder`s
+2. Applies the saved `StandardScaler` **only if** the loaded model is a type that needs it (Logistic Regression, KNN, or SVM) — tree-based models (Decision Tree, Random Forest) are predicted on raw features, matching how they were trained in the notebook
+3. Runs `model.predict()` / `model.predict_proba()` and displays the result
+
+This means you can swap in any of the other models trained in the notebook (Logistic Regression, Random Forest, KNN, SVM) just by re-pickling it as `restaurant_model.pkl` — the app detects the model type automatically and scales inputs accordingly.
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
 - Python 3.9+
-- The dataset: `restaurant_classification.csv` (same schema as used in the notebook)
+- The three exported artifacts: `restaurant_model.pkl`, `scaler.pkl`, `encoders.pkl`
 
 ### Installation
 
@@ -42,19 +44,24 @@ cd <your-repo-folder>
 pip install -r requirements.txt
 ```
 
+### Add the model artifacts
+
+Copy `restaurant_model.pkl`, `scaler.pkl`, and `encoders.pkl` (downloaded from the notebook's last cell) into the same folder as `app.py`. If they're not found, the app's sidebar will let you upload them manually at runtime instead.
+
 ### Run locally
 
 ```bash
 streamlit run app.py
 ```
 
-Then open the local URL Streamlit prints (usually `http://localhost:8501`), and upload your `restaurant_classification.csv` in the sidebar.
+Then open the local URL Streamlit prints (usually `http://localhost:8501`).
 
-## 📁 Expected Dataset Columns
+## 📁 Expected Feature Columns
+
+The app expects these 15 columns, in this order (matching the notebook's training data):
 
 | Column | Type |
 |---|---|
-| Name | text (dropped, not used as a feature) |
 | Location | categorical |
 | Cuisine | categorical |
 | Rating | numeric |
@@ -70,8 +77,8 @@ Then open the local URL Streamlit prints (usually `http://localhost:8501`), and 
 | Parking Availability | categorical |
 | Weekend Reservations | numeric |
 | Weekday Reservations | numeric |
-| Revenue | numeric (dropped, not used as a feature) |
-| Revenue_Class | target (0 = Low, 1 = High) |
+
+`Name`, `Revenue`, and `Revenue_Class` are not model inputs — for batch predictions, extra columns like these in an uploaded CSV are simply ignored.
 
 ## 🗂️ Project Structure
 
@@ -79,6 +86,9 @@ Then open the local URL Streamlit prints (usually `http://localhost:8501`), and 
 .
 ├── app.py                              # Streamlit app
 ├── requirements.txt                    # Python dependencies
+├── restaurant_model.pkl                # Trained model (add this yourself)
+├── scaler.pkl                          # Fitted StandardScaler (add this yourself)
+├── encoders.pkl                        # Fitted LabelEncoders (add this yourself)
 ├── Restaurant_Revenue_prediction.ipynb # Original analysis/model notebook
 └── README.md
 ```
@@ -86,14 +96,16 @@ Then open the local URL Streamlit prints (usually `http://localhost:8501`), and 
 ## 🛠️ Tech Stack
 
 - [Streamlit](https://streamlit.io/) — web app framework
-- [scikit-learn](https://scikit-learn.org/) — model training & evaluation
+- [scikit-learn](https://scikit-learn.org/) — model training & inference
 - [pandas](https://pandas.pydata.org/) / [NumPy](https://numpy.org/) — data handling
 
 ## ☁️ Deploying
 
 The easiest option is [Streamlit Community Cloud](https://streamlit.io/cloud):
 
-1. Push this repo to GitHub
+1. Push this repo to GitHub, **including** `restaurant_model.pkl`, `scaler.pkl`, and `encoders.pkl`
 2. Go to share.streamlit.io and connect the repo
 3. Set the main file path to `app.py`
-4. Deploy — users upload their own CSV once the app is live
+4. Deploy
+
+> If your `.pkl` files are large, consider [Git LFS](https://git-lfs.com/) rather than committing them directly.
