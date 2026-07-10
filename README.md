@@ -3,7 +3,7 @@
 A Streamlit web app that predicts whether a restaurant falls into the **High** or **Low** revenue class, based on features like location, cuisine, ratings, marketing budget, and reservations.
 
 Built on top of the analysis in [`Restaurant_Revenue_prediction.ipynb`](./Restaurant_Revenue_prediction.ipynb), this app loads the trained model artifacts the notebook exports and serves live predictions.
-
+DEMO:https://restaurantrevenueprediction-vna6tgyszpmalvxrpsklvn.streamlit.app/
 ## ✨ Features
 
 - **🔮 Single prediction** — fill in one restaurant's details and get an instant High/Low revenue prediction with class probabilities
